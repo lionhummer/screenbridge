@@ -109,6 +109,8 @@ pub fn arguments(config: &Config, frame: &Frame, software: bool) -> Vec<String> 
         (config.fps * 2).to_string(),
         "-bsf:v".into(),
         "dump_extra=freq=keyframe,h264_metadata=aud=insert".into(),
+        "-flush_packets".into(),
+        "1".into(),
         "-f".into(),
         "h264".into(),
         "pipe:1".into(),
