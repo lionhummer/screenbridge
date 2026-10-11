@@ -3,3 +3,4 @@ pub mod error;
 pub mod rfb;
 pub mod annex_b;
 pub mod encoder;
+pub mod auth;
