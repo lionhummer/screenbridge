@@ -1,0 +1,37 @@
+[package]
+name = "screenbridge"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Experimental bounded macOS desktop streaming service"
+repository = "https://github.com/lionhummer/screenbridge"
+publish = false
+
+[dependencies]
+axum = { version = "0.8", features = ["ws", "form"] }
+bytes = "1"
+cipher = "0.4"
+clap = { version = "4", features = ["derive"] }
+des = "0.8"
+futures-util = "0.3"
+hex = "0.4"
+hmac = "0.12"
+rand = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+subtle = "2"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
