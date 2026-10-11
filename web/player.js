@@ -3,19 +3,19 @@
   const canvas=document.querySelector('#screen'), status=document.querySelector('#status'), metrics=document.querySelector('#metrics'), ctx=canvas.getContext('2d');
   if(!globalThis.VideoDecoder){status.textContent='WebCodecs requires a supported browser and HTTPS.';return;}
   const ws=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/stream`);ws.binaryType='arraybuffer';
-  let decoder,codec,waiting=true,role='viewer',width=0,height=0,buttons=0,displayed=0,bytes=0,resets=0,decodeMs=0,rtt=null,previousFrames=0,previousBytes=0,previousTime=performance.now(),retry;
+  let decoder,codec,waiting=true,role='viewer',width=0,height=0,buttons=0,displayed=0,bytes=0,resets=0,decodeMs=0,rtt=null,previousFrames=0,previousBytes=0,previousTime=performance.now(),retry,queuedBytes=0;
   const receipts=new Map();
   function fail(message){status.hidden=false;status.textContent=message;if(decoder&&decoder.state!=='closed')decoder.close();ws.close();if(!retry)retry=setTimeout(()=>location.reload(),2000);}
-  function configure(next){if(decoder?.state==='configured'&&codec===next)return;decoder?.close();codec=next;waiting=true;receipts.clear();decoder=new VideoDecoder({output(frame){try{const at=receipts.get(frame.timestamp);if(at!==undefined)decodeMs=performance.now()-at;receipts.delete(frame.timestamp);ctx.drawImage(frame,0,0,canvas.width,canvas.height);displayed++;status.hidden=true;}finally{frame.close();}},error(){fail('Decoder failed');}});decoder.configure({codec,optimizeForLatency:true});}
+  function configure(next){if(decoder?.state==='configured'&&codec===next)return;decoder?.close();codec=next;waiting=true;receipts.clear();queuedBytes=0;decoder=new VideoDecoder({output(frame){try{const at=receipts.get(frame.timestamp);if(at!==undefined){decodeMs=performance.now()-at.at;queuedBytes-=at.bytes;}receipts.delete(frame.timestamp);ctx.drawImage(frame,0,0,canvas.width,canvas.height);displayed++;status.hidden=true;}finally{frame.close();}},error(){fail('Decoder failed');}});decoder.configure({codec,optimizeForLatency:true});}
   ws.onmessage=({data})=>{
     if(typeof data==='string'){let m;try{m=JSON.parse(data);}catch{fail('Invalid control message');return;}
       if(m.t==='role'){role=m.role;}else if(m.t==='pong'&&Number.isFinite(m.at)){rtt=performance.now()-m.at;}
       else if(m.t==='init'){if(m.version!==1||!Number.isInteger(m.width)||!Number.isInteger(m.height)||m.width<2||m.height<2||m.width*m.height>16777216||!Number.isInteger(m.sourceWidth)||!Number.isInteger(m.sourceHeight)||m.sourceWidth<m.width||m.sourceHeight<m.height||!/^[a-z0-9]{4}\.[0-9a-f]{6}$/i.test(m.codec)){fail('Invalid stream configuration');return;}width=m.sourceWidth;height=m.sourceHeight;if(canvas.width!==m.width)canvas.width=m.width;if(canvas.height!==m.height)canvas.height=m.height;const firstConfiguration=!decoder;configure(m.codec);if(firstConfiguration)canvas.focus();}return;}
     if(!decoder||data.byteLength<=16)return;const h=new DataView(data);if(h.getUint16(0)!==0x5342||h.getUint8(2)!==1){fail('Protocol mismatch');return;}
     bytes+=data.byteLength;const key=(h.getUint8(3)&1)!==0;
-    if(decoder.decodeQueueSize>8){decoder.reset();decoder.configure({codec,optimizeForLatency:true});waiting=true;receipts.clear();resets++;}
+    if((key&&decoder.decodeQueueSize>8)||decoder.decodeQueueSize>=30||queuedBytes+data.byteLength-16>8*1024*1024){decoder.reset();decoder.configure({codec,optimizeForLatency:true});waiting=true;receipts.clear();queuedBytes=0;resets++;}
     if(waiting&&!key)return;waiting=false;const pts=Math.round(h.getFloat64(8)*1000);if(!Number.isFinite(pts)||pts<0){fail('Invalid timestamp');return;}
-    if(receipts.size>=120)receipts.clear();receipts.set(pts,performance.now());try{decoder.decode(new EncodedVideoChunk({type:key?'key':'delta',timestamp:pts,data:data.slice(16)}));}catch{fail('Decode failed');}
+    if(receipts.size>=120){fail('Decoder output stalled');return;}const old=receipts.get(pts);if(old)queuedBytes-=old.bytes;const size=data.byteLength-16;receipts.set(pts,{at:performance.now(),bytes:size});queuedBytes+=size;try{decoder.decode(new EncodedVideoChunk({type:key?'key':'delta',timestamp:pts,data:data.slice(16)}));}catch{fail('Decode failed');}
   };
   ws.onclose=()=>fail('Disconnected; reconnecting…');ws.onerror=()=>fail('Connection failed');
   function input(message){if(role==='controller'&&ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<65536)ws.send(JSON.stringify(message));}
