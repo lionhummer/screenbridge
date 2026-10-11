@@ -2,7 +2,7 @@
 
 A Rust host service for experimental macOS desktop streaming. The first milestone reads a VM's loopback RFB framebuffer, encodes H.264 with VideoToolbox through FFmpeg, and serves an authenticated browser player. Native desktop capture will use a small ScreenCaptureKit helper.
 
-This is a fresh implementation under development. It is not a stable release and does not yet establish real-VM or internet performance. Read [design](docs/design.md) for boundaries and milestones.
+This is a fresh implementation under development. Real VM video has been exercised over private HTTPS, but latency and stability are still being measured. It is not a stable release. Read [design](docs/design.md) for boundaries and milestones.
 
 ## Development
 

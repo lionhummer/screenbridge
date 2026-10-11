@@ -4,7 +4,20 @@ The Rust implementation has passed synthetic RFB capture/input tests and a real 
 
 An actual local browser also displayed the 64×48 synthetic fixture at 30 FPS, with a sampled receive-to-draw reading of roughly 0.4 ms and no decoder resets. This tiny fixture does not represent a full desktop workload.
 
-These are correctness checks. Real VM compatibility, physical desktop capture and internet latency are not established yet.
+Real 1280×800 VM video has also been encoded and decoded on an Apple Silicon host and received over verified private HTTPS on a separate Mac. Physical desktop capture and controlled internet latency measurements remain outstanding.
+
+## Initial remote VM observation
+
+On 2026-10-11, a live VM test exposed periodic canvas clearing when unchanged keyframe metadata arrived. The player now preserves the canvas and decoder for unchanged metadata, with regression tests for repeated metadata and actual geometry changes. FFmpeg now flushes every encoded packet to its output pipe.
+
+Two short receiver samples used the same 30 FPS VM stream over a Tailscale relay. Each measurement ran for approximately 12 seconds, including the initial wait for a keyframe. Gaps below refer to binary video packet arrival times, not input latency.
+
+| Sample | Received frames | Observed FPS | Median gap | 95th percentile gap | Maximum gap | Gaps under 2 ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Before explicit packet flushing | 321 | 31.2 | 2.0 ms | 116.1 ms | 1391.3 ms | 160 |
+| After explicit packet flushing | 354 | 30.5 | 30.6 ms | 122.4 ms | 608.2 ms | 96 |
+
+Encoder packet timestamps had a median spacing of 33.4 ms in both samples. The second sample had more regular median arrival spacing, but its tail remained poor. These uncontrolled samples cannot separate encoder buffering from changing relay conditions or establish a reliable latency improvement. Browser RTT observations varied from about 57 ms to above 200 ms; a short post-update playback observation showed zero decoder resets. Direct-path and sustained interactive tests are still needed.
 
 ## Measure the whole path
 
