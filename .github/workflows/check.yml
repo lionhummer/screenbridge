@@ -1,0 +1,39 @@
+name: check
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Real encoder round trip
+        run: SCREENBRIDGE_FFMPEG="$(command -v ffmpeg)" cargo test --locked --test encoder_roundtrip -- --ignored
+      - name: Hardware WebSocket controller integration
+        if: runner.os == 'macOS'
+        run: SCREENBRIDGE_FFMPEG="$(command -v ffmpeg)" cargo test --locked --test websocket_control -- --ignored
+      - run: cargo build --locked --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prototype-${{ matrix.os }}
+          path: target/release/screenbridge
+          retention-days: 14
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+      - run: cargo check --locked --all-targets
