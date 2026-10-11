@@ -10,7 +10,7 @@
   ws.onmessage=({data})=>{
     if(typeof data==='string'){let m;try{m=JSON.parse(data);}catch{fail('Invalid control message');return;}
       if(m.t==='role'){role=m.role;}else if(m.t==='pong'&&Number.isFinite(m.at)){rtt=performance.now()-m.at;}
-      else if(m.t==='init'){if(m.version!==1||!Number.isInteger(m.width)||!Number.isInteger(m.height)||m.width<2||m.height<2||m.width*m.height>16777216||!Number.isInteger(m.sourceWidth)||!Number.isInteger(m.sourceHeight)||m.sourceWidth<m.width||m.sourceHeight<m.height||!/^[a-z0-9]{4}\.[0-9a-f]{6}$/i.test(m.codec)){fail('Invalid stream configuration');return;}width=m.sourceWidth;height=m.sourceHeight;canvas.width=m.width;canvas.height=m.height;configure(m.codec);canvas.focus();}return;}
+      else if(m.t==='init'){if(m.version!==1||!Number.isInteger(m.width)||!Number.isInteger(m.height)||m.width<2||m.height<2||m.width*m.height>16777216||!Number.isInteger(m.sourceWidth)||!Number.isInteger(m.sourceHeight)||m.sourceWidth<m.width||m.sourceHeight<m.height||!/^[a-z0-9]{4}\.[0-9a-f]{6}$/i.test(m.codec)){fail('Invalid stream configuration');return;}width=m.sourceWidth;height=m.sourceHeight;if(canvas.width!==m.width)canvas.width=m.width;if(canvas.height!==m.height)canvas.height=m.height;const firstConfiguration=!decoder;configure(m.codec);if(firstConfiguration)canvas.focus();}return;}
     if(!decoder||data.byteLength<=16)return;const h=new DataView(data);if(h.getUint16(0)!==0x5342||h.getUint8(2)!==1){fail('Protocol mismatch');return;}
     bytes+=data.byteLength;const key=(h.getUint8(3)&1)!==0;
     if(decoder.decodeQueueSize>8){decoder.reset();decoder.configure({codec,optimizeForLatency:true});waiting=true;receipts.clear();resets++;}

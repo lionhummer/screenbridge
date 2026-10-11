@@ -10,6 +10,7 @@ This is a fresh implementation under development. It is not a stable release and
 cargo test
 cargo clippy --all-targets -- -D warnings
 cargo fmt --check
+node --test tests/player.test.cjs
 ```
 
 The service is intended to ship as one Apple Silicon macOS executable with an external FFmpeg dependency. It will not require Node, Bun, or a guest agent. Physical desktop capture and control require native macOS permissions and are a separate adapter milestone.
